@@ -10,6 +10,11 @@ export default class Footer extends Component {
                     target="_blank" rel="noreferrer">
                         <i className="fab fa-react"></i>
                     </a>
+                    &emsp;
+                    <a href="https://api-sports.io/documentation/covid-19/v1"
+                    target="_blank" rel="noreferrer">
+                        <i className="fas fa-database"></i>
+                    </a>
                 </span>
                 <span style={{ float: 'right', }}>
                     Developed by:&emsp;

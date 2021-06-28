@@ -1,6 +1,6 @@
 const config = {
     webServer: {
-        host: 'http://127.0.0.1:5000/api/v1/covid_api'
+        host: 'https://krish-flask-app-v1.herokuapp.com/api/v1/covid_api'
     },
     covidAPI: {
         countries: 'https://covid-193.p.rapidapi.com/countries',
