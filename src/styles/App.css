@@ -1,5 +1,20 @@
 .content {
-  flex: 1 0 auto;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+.header-title {
+  background-color: #eeeeee;
+  border: 1px solid #bbbbbb;
+  font-size: 200%;
+  text-align: left;
+  padding: 1% 0.5%;
+}
+.footer {
+  background-color: #eeeeee;
+  border: 1px solid #bbbbbb;
+  padding: 0.5% 2%;
+  margin-top: auto;
 }
 
 .default-app-settings {
@@ -9,25 +24,6 @@
 
 .country-graph-table {
   width: 100%;
-}
-
-.header-title {
-  background-color: #eeeeee;
-  border: 1px solid #bbbbbb;
-  font-size: 200%;
-  text-align: left;
-  padding: 1% 0.5%;
-}
-
-.footer {
-  background-color: #eeeeee;
-  border: 1px solid #bbbbbb;
-  position: absolute;
-  left: 0;
-  bottom: 0;
-  width: 100%;
-  overflow: hidden;
-  padding: 0.5% 2%;
 }
 
 .font-header-3 {

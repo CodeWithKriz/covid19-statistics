@@ -27,12 +27,6 @@ export default class covidStatistics extends Component {
     }
     getCountryOptions (args) {
         var countryOptions = [];
-        var globalValue = 'All';
-        countryOptions.push({
-            value: globalValue,
-            name: String(globalValue).toLowerCase(),
-            text: globalValue,
-        });
         for (let index = 0; args['countries'][index]; index++) {
             countryOptions.push({
                 value: args['countries'][index],
@@ -42,14 +36,6 @@ export default class covidStatistics extends Component {
         }
         return countryOptions;
     }
-    getCovidStatistics(args) {
-        var result = [];
-        for (let index = 0; args['countries'][index]; index++) {
-            if (args['countries'][index]['continent'] !== args['countries'][index]['country'])
-                result.push(args['countries'][index]);
-        }
-        return result;
-    }
     getCovidHistory(args) {
         var result = {
             totalCases: [],
@@ -57,44 +43,53 @@ export default class covidStatistics extends Component {
             totalActive: [],
             dateTime: []
         };
-        var dateArray = [];
-        let curr_date = new Date();
-        curr_date.setDate(curr_date.getDate() - 179);
-        for (let i=0; i < args['data'].length; i++) {
-            let date_inst = new Date(args['data'][i]['time']);
-            if (( date_inst > curr_date ) && ( dateArray.indexOf(date_inst.toLocaleDateString().split(",")[0]) === -1 )) {
-                dateArray.push(date_inst.toLocaleDateString().split(",")[0]);
-                result['totalCases'].push(args['data'][i]['cases']['total']);
-                result['totalDeaths'].push(args['data'][i]['deaths']['total']);
-                result['totalActive'].push(args['data'][i]['cases']['active']);
-                result['dateTime'].push(date_inst.toLocaleDateString().split(",")[0]);
+        let dateArray = [];
+        let sortedArray = args['data'];
+        sortedArray.sort((a, b) => {
+            var keyA = new Date(a["day"]),
+            keyB = new Date(b["day"]);
+            if (keyA < keyB) return -1;
+            if (keyA > keyB) return 1;
+            return 0;
+        });
+        for (let i=0; i < sortedArray.length; i++) {
+            // let date_inst = new Date(sortedArray[i]['time']);
+            // let dateToString = date_inst.toLocaleDateString().split(",")[0];
+            let eachDate = new Date(sortedArray[i]['day']);
+            eachDate = eachDate.toLocaleDateString().split(",")[0];
+            if (dateArray.indexOf(eachDate) === -1) {
+                result['totalCases'].push(sortedArray[i]['cases']['total']);
+                result['totalDeaths'].push(sortedArray[i]['deaths']['total']);
+                result['totalActive'].push(sortedArray[i]['cases']['active']);
+                result['dateTime'].push(eachDate);
+                dateArray.push(eachDate);
             }
         }
         return result;
     }
     async componentDidMount() {
         try {
-            var countryQueryArgs = { url: config.covidAPI.countries, }
-            let countryData = await fetch(`${config.webServer.host}?query=${encodeURIComponent(JSON.stringify(countryQueryArgs))}`);
+            let countryData = await fetch(`${config.webServer.host}${config.covidAPI.countries}`);
             countryData = await countryData.json();
-            let covidStatisticsArgs = { url: config.covidAPI.statistics, }
-            let covidStatistics = await fetch(`${config.webServer.host}?query=${encodeURIComponent(JSON.stringify(covidStatisticsArgs))}`);
+            countryData = countryData["countries"]
+            let covidStatistics = await fetch(`${config.webServer.host}${config.covidAPI.statistics}|All`);
             covidStatistics = await covidStatistics.json();
+            covidStatistics = [covidStatistics["statistics"]];
             this.setState({
                 apiResponse: countryData,
-                countryCount: countryData.response.length,
-                countryList: [...['All'], ...countryData.response],
-                countryOptions: this.getCountryOptions({ countries: [...countryData.response] }),
+                countryCount: countryData.length,
+                countryList: [...countryData],
+                countryOptions: this.getCountryOptions({ countries: [...countryData] }),
                 countrySelected: 'All',
                 covidStatisticsAPI: covidStatistics,
-                covidStatistics: this.getCovidStatistics({ countries: [...covidStatistics.response] }),
+                covidStatistics: covidStatistics,
             });
-            let covidHistoryArgs = { url: config.covidAPI.history, params: {country: 'All'} }
-            let covidHistoryAPI = await fetch(`${config.webServer.host}?query=${encodeURIComponent(JSON.stringify(covidHistoryArgs))}`);
+            let covidHistoryAPI = await fetch(`${config.webServer.host}${config.covidAPI.history}|All`);
             covidHistoryAPI = await covidHistoryAPI.json();
-            let getCovidHistory = this.getCovidHistory({ data: [...covidHistoryAPI.response] });
+            covidHistoryAPI = covidHistoryAPI["history"];
+            let getCovidHistory = this.getCovidHistory({ data: [...covidHistoryAPI] });
             this.setState({
-                covidHistoryAPI: covidHistoryAPI,
+                covidHistoryAPI: [...covidHistoryAPI],
                 covidHistory: getCovidHistory,
             });
         } catch (err) {
@@ -118,31 +113,24 @@ export default class covidStatistics extends Component {
             event: event.target.value,
             data: data.value,
         }
-        let covidStatisticsArgs = { url: config.covidAPI.statistics, };
-        if (data.value !== 'All') {
-            covidStatisticsArgs['params'] = { country: data.value, };
-        }
         try {
             this.setState({ covidStatisticsAPI: '', covidHistoryAPI: '', });
-            let covidStatistics = await fetch(`${config.webServer.host}?query=${encodeURIComponent(JSON.stringify(covidStatisticsArgs))}`);
+            let covidStatistics = await fetch(`${config.webServer.host}${config.covidAPI.statistics}|${data.value}`);
             covidStatistics = await covidStatistics.json();
+            covidStatistics = [covidStatistics["statistics"]];
             this.setState({
                 countrySelected: eventHandled['data'],
                 covidStatisticsAPI: covidStatistics,
-                covidStatistics: this.getCovidStatistics({ countries: covidStatistics.response }),
+                covidStatistics: covidStatistics,
             });
-            let covidHistoryArgs = {
-                url: config.covidAPI.history,
-                params: { country: data.value, }
-            }
-            let covidHistoryAPI = await fetch(`${config.webServer.host}?query=${encodeURIComponent(JSON.stringify(covidHistoryArgs))}`);
+            let covidHistoryAPI = await fetch(`${config.webServer.host}${config.covidAPI.history}|${data.value}`);
             covidHistoryAPI = await covidHistoryAPI.json();
-            let getCovidHistory = this.getCovidHistory({ data: [...covidHistoryAPI.response] });
+            covidHistoryAPI = covidHistoryAPI["history"];
+            let getCovidHistory = this.getCovidHistory({ data: [...covidHistoryAPI] });
             this.setState({
                 covidHistoryAPI: covidHistoryAPI,
                 covidHistory: getCovidHistory,
             });
-            console.log(this.state.covidHistory);
         } catch (err) {
             this.setState({
                 error: JSON.stringify(err),
@@ -172,11 +160,16 @@ export default class covidStatistics extends Component {
             return (this.state.countryCount) ? ifTrue : ifFalse;
         })();
         const covidHistoryChart = (() => {
-            return (!this.state.covidHistoryAPI) ? waitingAPIResp : (<GraphChart covidHistory={this.state.covidHistory} />);
+            const casesChart = (<div>
+                <GraphChart chartTitle={"Total Cases"} series={this.state.covidHistory["totalCases"]} labels={this.state.covidHistory["dateTime"]} bgColor={"0, 110, 255"} />
+                <GraphChart chartTitle={"Total Deaths"} series={this.state.covidHistory["totalDeaths"]} labels={this.state.covidHistory["dateTime"]} bgColor={"255, 50, 0"} />
+                <GraphChart chartTitle={"Total Active"} series={this.state.covidHistory["totalActive"]} labels={this.state.covidHistory["dateTime"]} bgColor={"0, 255, 30"} />
+            </div>);
+            return (!this.state.covidHistoryAPI) ? waitingAPIResp : <div>{ casesChart }</div>;
         })();
         const getTotalStatistics = (() => {
             var covidStatistics = this.state.covidStatistics;
-            var totalCases = 0, totalActive = 0, totalCritical = 0, totalRecovered = 0, totalDeaths = 0, totalTests = 0;
+            var totalCases = 0, totalActive = 0, totalCritical = 0, totalRecovered = 0, totalDeaths = 0, totalTests = 0, totalPopulation = 0;
             var totalCasesNew = 0, totalDeathsNew = 0;
             for (let idx=0; covidStatistics[idx]; idx++) {
                 totalCases += covidStatistics[idx]['cases']['total'] ? covidStatistics[idx]['cases']['total'] : 0;
@@ -187,6 +180,7 @@ export default class covidStatistics extends Component {
                 totalDeaths += covidStatistics[idx]['deaths']['total'] ? covidStatistics[idx]['deaths']['total'] : 0;
                 totalDeathsNew += parseInt(covidStatistics[idx]['deaths']['new']) ? parseInt(covidStatistics[idx]['deaths']['new']) : 0;
                 totalTests += covidStatistics[idx]['tests']['total'] ? covidStatistics[idx]['tests']['total'] : 0;
+                totalPopulation += covidStatistics[idx]['population'] ? covidStatistics[idx]['population'] : 0;
             }
             const totalCasesNewTag = <span className="new-cases-span">( { '+ ' + commaSeparatedNum(totalCasesNew) } )</span>
             const totalDeathsNewTag = <span className="new-cases-span">( { '+ ' + commaSeparatedNum(totalDeathsNew) } )</span>
@@ -195,7 +189,8 @@ export default class covidStatistics extends Component {
             const totalCriticalTag = <tr><td>Total Critical</td><td>{ commaSeparatedNum(totalCritical) }</td></tr>;
             const totalRecoveredTag = <tr><td>Total Recovered</td><td>{ commaSeparatedNum(totalRecovered) }</td></tr>;
             const totalDeathsTag = <tr><td>Total Deaths</td><td>{ commaSeparatedNum(totalDeaths) } { totalDeathsNewTag }</td></tr>;
-            const totalTestsTag = <tr><td>Total Tests</td><td>{ commaSeparatedNum(totalTests) }</td></tr>;
+            const totalTestsTag = <tr><td>Total Tests</td><td>{ totalTests ? commaSeparatedNum(totalTests) : "NA" }</td></tr>;
+            const totalPopulationTag = <tr><td>Total Population</td><td>{ totalPopulation ? commaSeparatedNum(totalPopulation) : "NA" }</td></tr>
             return (<tbody className="font-weight-bold">
                 { totalCasesTag }
                 { totalActiveTag }
@@ -203,6 +198,7 @@ export default class covidStatistics extends Component {
                 { totalRecoveredTag }
                 { totalDeathsTag }
                 { totalTestsTag }
+                { totalPopulationTag }
             </tbody>);
         })();
         const covidStatistics = (
@@ -224,58 +220,11 @@ export default class covidStatistics extends Component {
                 </table>
             </div>
         );
-        const getTotalPopulation = (() => {
-            var covidStatistics = this.state.covidStatistics;
-            var totalPopulation = 0;
-            for (let idx=0; covidStatistics[idx]; idx++) {
-                totalPopulation += covidStatistics[idx]['population']
-            }
-            return totalPopulation
-        })();
-        const populationTable = (
-            <div>
-                <p className="font-header-4">Total Population</p>
-                <div className="scrollable-population-table">
-                    <table className="total-population-table">
-                        <thead className="font-weight-bold">
-                            <tr>
-                                <th>Continent</th>
-                                <th>Country</th>
-                                <th>Population</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            { (() => {
-                                if (countrySelected === 'All') {
-                                    return (
-                                        <tr key='All'>
-                                            <td>All</td>
-                                            <td>All</td>
-                                            <td>{ getTotalPopulation ? commaSeparatedNum(getTotalPopulation) : null }</td>
-                                        </tr>
-                                    );
-                                }
-                            })() }
-                            { this.state.covidStatistics.map((data) => (
-                                <tr key={ data['country'] }>
-                                    <td>{ data['continent'] }</td>
-                                    <td>{ data['country'] }</td>
-                                    <td>{ data['population'] ? commaSeparatedNum(data['population']) : null }</td>
-                                </tr>
-                            )) }
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        );
         const countryMainContent = (() => {
             const messages = <p className="font-header-3">Reported Cases and Deaths by Country or Territory</p>;
             const errorMessage = <div><p className="header-title">[Error]</p><p>Unable to fetch the Covid Statistics Report</p></div>;
             const listCovidStats = (() => {
                 return (!this.state.covidStatisticsAPI) ? waitingAPIResp : <div>{ covidStatistics }</div>;
-            })();
-            const listPopulationTable = (() => {
-                return (!this.state.covidStatisticsAPI) ? waitingAPIResp : <div>{ populationTable }</div>;
             })();
             const listContent = (
                 <div className='default-app-settings'>
@@ -283,7 +232,7 @@ export default class covidStatistics extends Component {
                         <tbody>
                             <tr>
                                 <td style={{ textAlign: 'left', }}> { messages } { selectCountry } <br /> { listCovidStats } </td>
-                                <td style={{ float: 'right', }}> { covidHistoryChart } <br /> { listPopulationTable } </td>
+                                <td style={{ float: 'right', }}> { covidHistoryChart } </td>
                             </tr>
                         </tbody>
                     </table>
